@@ -2,6 +2,7 @@ package com.yang.yangdada.scoring;
 
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.yang.yangdada.annotation.ScoringStrategyConfig;
 import com.yang.yangdada.model.dto.question.QuestionContentDTO;
 import com.yang.yangdada.model.entity.App;
 import com.yang.yangdada.model.entity.Question;
@@ -16,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@ScoringStrategyConfig(appType = 0, scoringStrategy = 1)
 public class CustomTestScoringStrategy implements ScoringStrategy {
 
     @Resource
