@@ -2,10 +2,7 @@ package com.yang.yangdada.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yang.yangdada.annotation.AuthCheck;
-import com.yang.yangdada.common.BaseResponse;
-import com.yang.yangdada.common.DeleteRequest;
-import com.yang.yangdada.common.ErrorCode;
-import com.yang.yangdada.common.ResultUtils;
+import com.yang.yangdada.common.*;
 import com.yang.yangdada.constant.UserConstant;
 import com.yang.yangdada.exception.BusinessException;
 import com.yang.yangdada.exception.ThrowUtils;
@@ -25,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.Date;
 
 /**
  * 应用接口
@@ -40,6 +38,40 @@ public class AppController {
 
     @Resource
     private UserService userService;
+
+    /**
+     * 应用审核
+     *
+     * @param reviewRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/review")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> doAppReview(@RequestBody ReviewRequest reviewRequest, HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(reviewRequest == null, ErrorCode.PARAMS_ERROR);
+        Long id = reviewRequest.getId();
+        Integer reviewStatus = reviewRequest.getReviewStatus();
+        // 校验
+        ReviewStatusEnum reviewStatusEnum = ReviewStatusEnum.getEnumByValue(reviewStatus);
+        ThrowUtils.throwIf(id == null || id <= 0 || reviewStatusEnum == null, ErrorCode.PARAMS_ERROR);
+        // 判断是否存在
+        App oldApp = appService.getById(id);
+        ThrowUtils.throwIf(oldApp == null, ErrorCode.NOT_FOUND_ERROR);
+        // 已经是该状态
+        ThrowUtils.throwIf(oldApp.getReviewStatus().equals(reviewStatus), ErrorCode.PARAMS_ERROR, "请不要重复审核");
+        // 更新审核状态
+        App app = new App();
+        app.setId(id);
+        app.setReviewStatus(reviewStatus);
+        app.setReviewMessage(reviewRequest.getReviewMessage());
+        app.setReviewerId(loginUser.getId());
+        app.setReviewTime(new Date());
+        boolean result = appService.updateById(app);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        return ResultUtils.success(true);
+    }
 
     // region 增删改查
 
