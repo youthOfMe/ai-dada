@@ -99,3 +99,6 @@ knife4j:
         api-rule: package
         api-rule-resources:
           - com.yang.yangdada.controller
+# AI 配置
+ai:
+  apiKey: xxx
