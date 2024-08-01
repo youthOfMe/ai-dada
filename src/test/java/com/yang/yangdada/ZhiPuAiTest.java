@@ -22,7 +22,7 @@ public class ZhiPuAiTest {
     public void test() {
         ClientV4 client = new ClientV4.Builder("be7106d7c32bc13247f993d8b99dcff0.BZR87oTpGU4kB9HD").build();
         List<ChatMessage> messages = new ArrayList<>();
-        ChatMessage chatMessage = new ChatMessage(ChatMessageRole.USER.value(), "可以写一个夸赞稿吗关于济宁学院计算机科学与工程学院李明扬吗，他是合格的掏粪工人，在化粪池中他见义勇为，救下了被威胁的人");
+        ChatMessage chatMessage = new ChatMessage(ChatMessageRole.USER.value(), "可以写一个夸赞稿吗关于济宁学院计算机科学与工程学院李明扬吗，他是合格的掏粪工人，在化粪池中他见义勇为，救下了被付方亮持掏粪铲子威胁的付庆浩");
         messages.add(chatMessage);
 
         ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
