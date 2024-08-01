@@ -17,7 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@ScoringStrategyConfig(appType = 0, scoringStrategy = 1)
+@ScoringStrategyConfig(appType = 0, scoringStrategy = 0)
 public class CustomTestScoringStrategy implements ScoringStrategy {
 
     @Resource
