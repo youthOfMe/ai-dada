@@ -14,9 +14,12 @@ import com.yang.yangdada.model.dto.userAnswer.UserAnswerAddRequest;
 import com.yang.yangdada.model.dto.userAnswer.UserAnswerEditRequest;
 import com.yang.yangdada.model.dto.userAnswer.UserAnswerQueryRequest;
 import com.yang.yangdada.model.dto.userAnswer.UserAnswerUpdateRequest;
+import com.yang.yangdada.model.entity.App;
 import com.yang.yangdada.model.entity.User;
 import com.yang.yangdada.model.entity.UserAnswer;
 import com.yang.yangdada.model.vo.UserAnswerVO;
+import com.yang.yangdada.scoring.ScoringStrategyExecutor;
+import com.yang.yangdada.service.AppService;
 import com.yang.yangdada.service.UserAnswerService;
 import com.yang.yangdada.service.UserService;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +45,12 @@ public class UserAnswerController {
     @Resource
     private UserService userService;
 
+    @Resource
+    private AppService appService;
+
+    @Resource
+    private ScoringStrategyExecutor scoringStrategyExecutor;
+
     // region 增删改查
 
     /**
@@ -61,6 +70,10 @@ public class UserAnswerController {
         userAnswer.setChoices(JSONUtil.toJsonStr(choices));
         // 数据校验
         userAnswerService.validUserAnswer(userAnswer, true);
+        // 判断是否存在
+        Long appId = userAnswer.getAppId();
+        App app = appService.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.PARAMS_ERROR);
         // todo 填充默认值
         User loginUser = userService.getLoginUser(request);
         userAnswer.setUserId(loginUser.getId());
@@ -69,6 +82,15 @@ public class UserAnswerController {
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         // 返回新写入的数据 id
         long newUserAnswerId = userAnswer.getId();
+        // 调用评分模块
+        try {
+            UserAnswer newUserAnswer = scoringStrategyExecutor.doScore(choices, app);
+            newUserAnswer.setId(newUserAnswerId);
+            userAnswerService.updateById(newUserAnswer);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "判题错误");
+        }
         return ResultUtils.success(newUserAnswerId);
     }
 
