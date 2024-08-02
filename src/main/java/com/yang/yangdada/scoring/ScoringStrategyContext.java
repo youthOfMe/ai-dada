@@ -16,10 +16,10 @@ import java.util.List;
 public class ScoringStrategyContext {
 
     @Resource
-    private CustomScoreScoringStrategy customScoreScoringStrategy;
+    private CustomTestScoringStrategy customScoreScoringStrategy;
 
     @Resource
-    private CustomTestScoringStrategy customTestScoringStrategy;
+    private CustomScoreScoringStrategy customTestScoringStrategy;
 
     public UserAnswer doScore(List<String> choiceList, App app) {
         AppTypeEnum appTypeEnum = AppTypeEnum.getEnumByValue(app.getAppType());

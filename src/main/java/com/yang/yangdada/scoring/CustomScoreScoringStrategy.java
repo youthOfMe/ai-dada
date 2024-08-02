@@ -1,5 +1,6 @@
 package com.yang.yangdada.scoring;
 
+
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.yang.yangdada.annotation.ScoringStrategyConfig;
@@ -16,9 +17,9 @@ import javax.annotation.Resource;
 import java.util.List;
 
 /**
- * 自定义测评类应用评分策略
+ * 自定义得分类应用评分策略
  */
-@ScoringStrategyConfig(appType = 1, scoringStrategy = 0)
+@ScoringStrategyConfig(appType = 0, scoringStrategy = 0)
 public class CustomScoreScoringStrategy implements ScoringStrategy {
 
     @Resource
