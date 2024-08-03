@@ -106,11 +106,10 @@ public class AiManager {
      *
      * @param systemMessage
      * @param userMessage
-     * @param stream
      * @param temperature
      * @return
      */
-    public Flowable<ModelData> doStreamRequest(String systemMessage, String userMessage, Boolean stream, Float temperature) {
+    public Flowable<ModelData> doStreamRequest(String systemMessage, String userMessage, Float temperature) {
         List<ChatMessage> chatMessageList = new ArrayList<>();
         ChatMessage systemChatMessage = new ChatMessage(ChatMessageRole.SYSTEM.value(), systemMessage);
         chatMessageList.add(systemChatMessage);
