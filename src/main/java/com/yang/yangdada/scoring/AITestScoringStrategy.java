@@ -15,6 +15,8 @@ import com.yang.yangdada.model.entity.Question;
 import com.yang.yangdada.model.entity.UserAnswer;
 import com.yang.yangdada.model.vo.QuestionVO;
 import com.yang.yangdada.service.QuestionService;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 
 import javax.annotation.Resource;
 import java.util.ArrayList;
@@ -30,6 +32,11 @@ public class AITestScoringStrategy implements ScoringStrategy {
     @Resource
     private AiManager aiManager;
 
+    @Resource
+    private RedissonClient redissonClient;
+
+    private static final String AI_ANSWER_LOCK = "AI_ANSWER_LOCK";
+
     /**
      * 评分结果缓存
      */
@@ -38,17 +45,6 @@ public class AITestScoringStrategy implements ScoringStrategy {
                     // 缓存五分钟后移除
                     .expireAfterAccess(5L, TimeUnit.MINUTES)
                     .build();
-
-    /**
-     * 创建缓存KEY => 进行加密
-     *
-     * @param appId
-     * @param choices
-     * @return
-     */
-    private String buildCacheKey(Long appId, String choices) {
-        return DigestUtil.md5Hex(appId + ":" + choices);
-    }
 
     /**
      * AI评分系统消息
@@ -67,6 +63,17 @@ public class AITestScoringStrategy implements ScoringStrategy {
             "{\"resultName\": \"评价名称\", \"resultDesc\": \"评价描述\"}\n" +
             "```\n" +
             "3. 返回格式必须为 JSON 对象";
+
+    /**
+     * 创建缓存KEY => 进行加密
+     *
+     * @param appId
+     * @param choices
+     * @return
+     */
+    private String buildCacheKey(Long appId, String choices) {
+        return DigestUtil.md5Hex(appId + ":" + choices);
+    }
 
     /**
      * AI评分用户消息
@@ -92,7 +99,7 @@ public class AITestScoringStrategy implements ScoringStrategy {
     }
 
     @Override
-    public UserAnswer doScore(List<String> choice, App app) {
+    public UserAnswer doScore(List<String> choice, App app) throws InterruptedException {
 
         Long id = app.getId();
         String jsonStr = JSONUtil.toJsonStr(choice);
@@ -108,33 +115,51 @@ public class AITestScoringStrategy implements ScoringStrategy {
             return userAnswer;
         }
 
-        // 1. 根据ID查询到题目和题目结果信息
-        Question question = questionService.getOne(
-                Wrappers.lambdaQuery(Question.class).eq(Question::getAppId, id)
-        );
+        // 定义锁
+        RLock lock = redissonClient.getLock(AI_ANSWER_LOCK + cacheKey);
 
-        QuestionVO questionVO = QuestionVO.objToVo(question);
-        List<QuestionContentDTO> questionContent = questionVO.getQuestionContent();
+        try {
+            // 竞争锁
+            boolean res = lock.tryLock(3, 15, TimeUnit.SECONDS);
+            // 没抢到锁，强制返回
+            if (!res) {
+                return null;
+            }
 
-        // 2. 调用AI获取结果
-        // 封装Prompt
-        String userMessage = getAiTestScoringUserMessage(app, questionContent, choice);
-        // AI生成
-        String result = aiManager.doSyncStableRequest(AI_TEST_SCORING_SYSTEM_MESSAGE, userMessage);
-        // 截取需要的JSON信息
-        int start = result.indexOf("[");
-        int end = result.lastIndexOf("]");
-        String json = result.substring(start, end + 1);
+            // 1. 根据ID查询到题目和题目结果信息
+            Question question = questionService.getOne(
+                    Wrappers.lambdaQuery(Question.class).eq(Question::getAppId, id)
+            );
 
-        // 缓存结果
-        answerCacheMap.put(cacheKey, json);
+            QuestionVO questionVO = QuestionVO.objToVo(question);
+            List<QuestionContentDTO> questionContent = questionVO.getQuestionContent();
 
-        // 3.构造返回值
-        UserAnswer userAnswer = JSONUtil.toBean(json, UserAnswer.class);
-        userAnswer.setAppId(id);
-        userAnswer.setAppType(app.getAppType());
-        userAnswer.setScoringStrategy(app.getScoringStrategy());
-        userAnswer.setChoices(jsonStr);
-        return userAnswer;
+            // 2. 调用AI获取结果
+            // 封装Prompt
+            String userMessage = getAiTestScoringUserMessage(app, questionContent, choice);
+            // AI生成
+            String result = aiManager.doSyncStableRequest(AI_TEST_SCORING_SYSTEM_MESSAGE, userMessage);
+            // 截取需要的JSON信息
+            int start = result.indexOf("[");
+            int end = result.lastIndexOf("]");
+            String json = result.substring(start, end + 1);
+
+            // 缓存结果
+            answerCacheMap.put(cacheKey, json);
+
+            // 3.构造返回值
+            UserAnswer userAnswer = JSONUtil.toBean(json, UserAnswer.class);
+            userAnswer.setAppId(id);
+            userAnswer.setAppType(app.getAppType());
+            userAnswer.setScoringStrategy(app.getScoringStrategy());
+            userAnswer.setChoices(jsonStr);
+            return userAnswer;
+        } finally {
+            if (lock != null && lock.isLocked()) {
+                if (lock.isHeldByCurrentThread()) {
+                    lock.unlock();
+                }
+            }
+        }
     }
 }
