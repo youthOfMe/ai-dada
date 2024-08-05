@@ -1,5 +1,6 @@
 package com.yang.yangdada.controller;
 
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.yang.yangdada.annotation.AuthCheck;
@@ -50,6 +51,15 @@ public class UserAnswerController {
 
     @Resource
     private ScoringStrategyExecutor scoringStrategyExecutor;
+
+    /**
+     * 生成全局唯一ID
+     * @return
+     */
+    @GetMapping("/generate/id")
+    public BaseResponse<Long> generateUserAnserId() {
+        return ResultUtils.success(IdUtil.getSnowflakeNextId());
+    }
 
     // region 增删改查
 
